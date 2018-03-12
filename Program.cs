@@ -99,7 +99,7 @@ namespace Util
             while (!exiting)
             {
                 while (Player.IsAlive && !exiting)
-                {
+                {   
                     if (Player.IsRetired)
                         Retired();
                     else
@@ -206,78 +206,85 @@ namespace Util
         private static void LootPickup(List<Equipment> loot)
         {
             if (loot.Count == 0) return;
-
-            //In case a weapon was set to offhand, reset it
-            foreach(Equipment item in loot)
-            {
-                if(item is Weapon && ((Weapon)item).CanBeOffhand && ((Weapon)item).IsOffhand)
-                {
-                    ((Weapon)item).IsOffhand = false;
-                }
-            }
-
+            
             Equipment lootChoice;
             do
             {
                 lootChoice = Menu.LootSelection(loot.ToArray());
                 if (lootChoice != null)
                 {
-                    Equipment playerEquipment1 = Player.Gear.Get(lootChoice.Slots[0]);
-                    Equipment playerEquipment2 = Player.Gear.Get(lootChoice.Slots[1]);
+                    Equipment playerEquipment1;
+                    Equipment playerEquipment2;
+                    Equipment itemToReplace1 = null;
+                    Equipment itemToReplace2 = null;
                     string message = "";
+                    if (lootChoice is Weapon)
+                    {
+                        (lootChoice as Weapon).IsOffhand = false; //reset to mainhand
 
-                    //Two handed weapon and we have something in the offhand
-                    if (lootChoice.Slots[1] != null && playerEquipment2 != null)
-                        message = "Do you want to replace your " + playerEquipment1 + " and " + playerEquipment2 + " with " + lootChoice + "?";
+                        playerEquipment1 = Player.Gear.Get(EquipSlot.Mainhand);
+                        playerEquipment2 = Player.Gear.Get(EquipSlot.Offhand);
+
+                        //Two handed weapon and we have something in the offhand
+                        if (lootChoice.Slots[1] == EquipSlot.Offhand && playerEquipment2 != null)
+                        {
+                            message = "Do you want to replace your " + playerEquipment1 + " and " + playerEquipment2 + " with " + lootChoice + "?";
+                            itemToReplace1 = playerEquipment1;
+                            itemToReplace2 = playerEquipment2;
+                        }
+                    } else
+                    {
+                        playerEquipment1 = Player.Gear.Get(lootChoice.Slots[0]);
+                        playerEquipment2 = null;
+                    }
+                    
                     //We have something in the slot
-                    else if (playerEquipment1 != null)
+                    if (playerEquipment1 != null)
+                    {
                         message = "Do you want to replace your " + playerEquipment1 + " with " + lootChoice + "?";
+                        itemToReplace1 = playerEquipment1;
+                    }
                     //The slot is empty
                     else
+                    {
                         message = "Do you want to equip the " + lootChoice + "?";
+                    }
 
                     bool confirmChoice = Menu.Confirm(message);
                     //Equip armor/mainhand
                     if (confirmChoice)
                     {
-                        if (lootChoice is Weapon)
-                            ((Weapon)lootChoice).IsOffhand = false; //Make sure its in the mainhand
-
                         //Equip
                         Player.Equip(lootChoice);
-                        //Remove item from gound
+                        //Remove item from ground
                         loot.Remove(lootChoice);
 
                         //Place items on ground if there were any
-                        if (playerEquipment1 != null)
+                        if (itemToReplace1 != null)
                             loot.Add(playerEquipment1);
-                        if (playerEquipment2 != null)
+                        if (itemToReplace2 != null && itemToReplace2 != itemToReplace1)
                             loot.Add(playerEquipment2);
                         //User declined, ask to equip weapon in offhand
                     }
                     else if (lootChoice is Weapon && ((Weapon)lootChoice).CanBeOffhand)
                     {
-                        if (playerEquipment2 == null)
-                            playerEquipment2 = Player.Gear.Get(EquipSlot.Offhand);
-
-                        Equipment toReplace = playerEquipment2;
-                        //Got something in offhand
-                        if (playerEquipment2 != null)
+                        itemToReplace1 = null;
+                        //Two handed weapon
+                        if (playerEquipment1.Slots[1] == EquipSlot.Offhand)
                         {
-                            toReplace = playerEquipment2;
-                            message = "Do you want to replace your " + playerEquipment2 + " with " + lootChoice + "?";
-                            //Two handed weapon
-                        }
-                        else if (playerEquipment1.Slots[1] == EquipSlot.Offhand)
-                        {
-                            toReplace = playerEquipment1;
                             message = "Do you want to unequip your " + playerEquipment2 + " and put the " + lootChoice + " in your offhand?";
+                            itemToReplace1 = playerEquipment1;
                         }
-                        //Offhand is empty
-                        else
+                        //Put in empty offhand
+                        else if (playerEquipment2 == null)
                         {
-                            toReplace = null;
-                            message = "Do you want to equip " + lootChoice + " in your offhand?";
+                            message = "Do you want equip " + lootChoice + " in your offhand?";
+                        }
+                        //Replace offhand weapon
+                        else if (playerEquipment2 != null)
+                        {
+                            message = "Do you want to replace your " + playerEquipment2 + " with " + lootChoice + "?";
+                            itemToReplace1 = playerEquipment2;
                         }
 
                         bool offhandChoice = Menu.Confirm(message);
@@ -285,14 +292,14 @@ namespace Util
                         if (offhandChoice)
                         {
                             //Set item to offhand
-                            ((Weapon)lootChoice).IsOffhand = true;
+                            (lootChoice as Weapon).IsOffhand = true;
                             //Equip
                             Player.Equip(lootChoice);
                             //Remove from ground
                             loot.Remove(lootChoice);
                             //Add replaced weapon to ground
-                            if (toReplace != null)
-                                loot.Add(toReplace);
+                            if (itemToReplace1 != null)
+                                loot.Add(itemToReplace1);
                         }
                     }
                 }
@@ -347,7 +354,14 @@ namespace Util
         {
             //Create opponent
             string name = NameGenerator.GetCharacterName();
-            Opponent = new Character(name: name, level: Player.Level);
+
+            //Add a bit of variety in levels, most likely to get the same level as the player
+            int loops = Player.Level < 6 ? Player.Level : 6;
+            int level = Player.Level - loops/2;
+            for(int i = 0; i < loops; i++)
+                level += RNG.Next(2);
+
+            Opponent = new Character(name: name, level: level);
             //Update the sidebar
             Display.UpdateSidebar(opponentHP: true, opponentLevel: true, opponentName: true, opponentStats: true);
         }
@@ -408,7 +422,7 @@ namespace Util
 
                 //Print the summary
                 Display.WriteLine(round.ToString(), speed);
-
+                
                 //Update health
                 Display.UpdateSidebar(playerHP: true, opponentHP: true);
             }

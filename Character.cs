@@ -119,7 +119,14 @@ namespace Util
             }
 
             fatigue = 0;
-            CurrentHealth = MaxHealth;
+            //Heal 50 hp or 70% of max health, whichever is greater
+            if(50 > (MaxHealth*0.7))
+            {
+                CurrentHealth = MaxHealth;
+            } else
+            {
+                CurrentHealth += (int)(MaxHealth*0.7);
+            }
             Display.UpdateSidebar(playerHP: true);
         }
 
@@ -159,14 +166,14 @@ namespace Util
         {
             Kills++;
 
-            //Get 50% of what the opponent needs to Level up
-            int newExp = (defeated.NextLevelExp - defeated.Exp)/2;
+            //Get 25% of what the opponent needs to Level up
+            int newExp = (int)((defeated.NextLevelExp - defeated.Exp) * 0.25);
             //Check Level difference
             int LevelDifference = defeated.Level - Level;
             //If the opponent was 4 Levels or more below, get almost nothing
             if (LevelDifference < -3)
                 newExp /= 5;
-            //If opponent was within 2 Levels or more below, get a quarter
+            //If opponent was within 2 Levels or more below, get a half
             else if (LevelDifference < -1)
                 newExp /= 2;
             //If opponent is 2 Levels or more above, get a quarter more

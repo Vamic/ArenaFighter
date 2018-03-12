@@ -9,12 +9,14 @@ namespace Util
         protected int offhandPenalty;
         protected StatType statModifier;
         protected bool canBeOffhand;
+        protected Statistics dualWieldBonus;
 
         public bool IsOffhand {
             get => slots[0] == EquipSlot.Offhand;
             set => slots[0] = value && CanBeOffhand ? EquipSlot.Offhand : EquipSlot.Mainhand;
         }
         public bool CanBeOffhand { get => canBeOffhand; }
+        public Statistics DualWieldBonus { get => dualWieldBonus; }
 
         internal static Weapon GenerateRandomWeapon(Character character, bool offhand = false)
         {            
@@ -152,9 +154,11 @@ namespace Util
             baseName = "Dagger";
             stats = new Statistics();
             statModifier = StatType.Dexterity;
-            baseDamage = new Dice(DiceSize.Four);
+            baseDamage = new Dice(DiceSize.Four); //Very weak but equip two and youll never miss again probably
+            dualWieldBonus = new Statistics(StatType.Focus, 5);
             slots[0] = EquipSlot.Mainhand;
         }
+        
         public Dagger(bool offhand) : this()
         {
             if (offhand)

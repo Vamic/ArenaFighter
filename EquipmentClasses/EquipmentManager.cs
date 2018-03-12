@@ -21,6 +21,11 @@ namespace Util
                     if (e.SuffixEnchantment != null)
                         result += e.SuffixEnchantment.GetStats();
                 }
+                //Check if dualwielding a weapontype
+                Weapon[] weapons = GetWeapons();
+                if (weapons.Length > 1 && weapons[1].IsOffhand && weapons[0].BaseName == weapons[1].BaseName)
+                    result += weapons[1].DualWieldBonus;
+
                 return result;
             }
         }
